@@ -1,13 +1,15 @@
+setwd("/Users/3126147/courses/John Hopkins DS specialization/Exploratory Data Analysis")
+
 data <- read.table("./data/household_power_consumption.txt", header=TRUE, sep=";", 
                    stringsAsFactors=FALSE, dec=".", na.strings="?", nrows=2075259,comment.char="")
 interest.data <- data[data$Date %in% c("1/2/2007","2/2/2007") ,]
 rm(data)
 
 #Conversions
-datetime <- strptime(paste(subSetData$Date, subSetData$Time, sep=" "), "%d/%m/%Y %H:%M:%S")
-subMetering1 <- as.numeric(subSetData$Sub_metering_1)
-subMetering2 <- as.numeric(subSetData$Sub_metering_2)
-subMetering3 <- as.numeric(subSetData$Sub_metering_3)
+datetime <- strptime(paste(interest.data$Date, interest.data$Time, sep=" "), "%d/%m/%Y %H:%M:%S")
+subMetering1 <- as.numeric(interest.data$Sub_metering_1)
+subMetering2 <- as.numeric(interest.data$Sub_metering_2)
+subMetering3 <- as.numeric(interest.data$Sub_metering_3)
 
 png("plot3.png", width=480, height=480, units="px", pointsize=12, bg="white")
 plot(datetime, subMetering1, type="l", ylab="Energy Submetering", xlab="")
