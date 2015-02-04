@@ -1,5 +1,18 @@
 ## Introduction
 
+### Updates 
+
+Rather than change the whole thing, let me provide a summary of what all I have done
+* Implemented 4 core functions in all 4 .R files plot1() to plot4() which are passed the df and they use plot / hist functions
+* A data loading and caching solution which will not re-read large file or filter it again and again for each of the 4 runs
+* dplyr and futile.logger are used in this as external packages
+* please see notes in each of .R file
+* if you want to run the code source the file and run runAssignment1() call after sourcing it.
+* My ambition of viewing two PNG side by side has currently been thwarted by unavailability of EBImage for latest R version 
+* To reduce the size of upload to Github I have made a zero size zipfile so that the script gets fooled to some extent
+
+### continuing text from earlier README
+
 This assignment uses data from
 the <a href="http://archive.ics.uci.edu/ml/">UC Irvine Machine
 Learning Repository</a>, a popular repository for machine learning
