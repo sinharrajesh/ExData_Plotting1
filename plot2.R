@@ -1,5 +1,5 @@
 # Filename: plot2.R
-# Purpose: To generate the first plot for assignment-1 / Exploratory Data Analysis
+# Purpose: To generate the second plot for assignment-1 / Exploratory Data Analysis
 # 
 # Generates 2D plot of Global Active Power (minute-averaged) for a US house-hold for first two days of 2007
 #     as observed on the two days of the week

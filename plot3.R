@@ -1,5 +1,5 @@
 # Filename: plot3.R
-# Purpose: To generate the first plot for assignment-1 / Exploratory Data Analysis
+# Purpose: To generate the third  plot for assignment-1 / Exploratory Data Analysis
 # 
 # Generates 2D plot of 3 submeters data as observed on the two days of the week
 # 
