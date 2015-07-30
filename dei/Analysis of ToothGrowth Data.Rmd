@@ -1,0 +1,163 @@
+---
+title: "Analysis of ToothGrowth Data"
+author: "Rajesh Sinha"
+date: "22 March 2015" 
+output: 
+    pdf_document:
+        toc: true
+        toc_depth: 2
+        number_sections: true
+---
+
+```{r  library, warning=FALSE, message=FALSE, echo=F}
+library(data.table)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(knitr)
+trim <- function(x) gsub("^\\s+|\\s+$", "", x)
+```
+`r opts_chunk$set(echo=T, tidy=T)`
+
+# Loading and Summary of Data
+
+```{r load}
+library(datasets)
+data(ToothGrowth)
+df <- data.frame(ToothGrowth); df$supp <- factor(df$supp); df$dose <- factor(df$dose);
+summary(ToothGrowth)
+````
+
+
+# Exploratory Analysis
+
+We can see that the dataset contains length of odontoblasts (teeth) in each of 10 guinea pigs at each of three dose levels of Vitamin C (0.5, 1, and 2 mg) with each of two delivery methods (orange juice or ascorbic acid). Summarizing the data by supplement type (VC or OJ) and dose we get following averages and standard deviation
+
+```{r basic}
+df.s <- df %>% group_by (supp) %>% summarize(avg=mean(len), sd=sd(len), count=n()); # Grouped by supplement only
+df.sd <- df %>% group_by (supp, dose) %>% summarize(avg=mean(len), sd=sd(len), count=n());
+df.sd # Grouped by supplement and dose
+
+````
+
+We can see a side-by-side box plot of the same for better visualization
+```{r plot}
+ggplot(ToothGrowth, aes(x=dose, y=len)) + 
+    ggtitle("ToothGrowth Length vs Dose by Supplement type") + 
+    geom_boxplot(aes(fill=factor(dose))) + facet_grid(.~supp)
+````
+
+From the above, we can start making following possible tests
+
+* Comparing the average tooth growth __by supplement irrespective of dose levels__ (given that there are 10 observations each in both supplements at the 3 dosage levels)
+* Comparison of average tooth growth __by supplement type and at same dose levels.__
+* Comparison of average tooth growth __by dose levels irrespective of supplement types.__
+* Comparison of average tooth growth __by dose levels for specific supplement type.__
+
+* Doing the same as above for individual supplement types.
+
+
+# Assumptions
+
+* It is not clear whether we have paired data or not - whether the tooth growth for different doses with the same supplement OR across different supplements are the same guinea pigs. We assume that this is not the case
+* We are applying t-tests as the number of observations is small (<= 30)
+* We have assumed independence between guinea pigs within the same supplement group and across groups.
+* We are assuming unequal variances across groups for simplification purposes.
+
+# Hypothesis Tests 
+
+## Hypothesis Tests for Supplements
+
+We compare whether the difference of means of two supplements are indeed different with null hypothesis that they are same.
+$H_o: \mu_{oj} = \mu_{vc}$ and $H_a: \mu_{oj} != \mu_{vc}$
+
+```{r supp1}
+t.supp <- t.test(len ~ supp, paired = FALSE, var.equal = FALSE, data = df)
+````
+Since p-value `r t.supp$p.value` is above the 5% significance level and the 95% confidence interval (`r t.supp$conf[1]`,`r t.supp$conf[2]`) has zero within it, we fail to reject null hypothesis. 
+
+## Tests for Supplements at same dose levels
+
+Next we examine whether there is a material difference between the supplements at same dosage levels. Essentiall our null hypothesis are
+
+$H_o: \mu_{oj0.5} = \mu_{vc0.5}$ and $H_a: \mu_{oj0.5} != \mu_{vc0.5}$
+
+$H_o: \mu_{oj1.0} = \mu_{vc1.0}$ and $H_a: \mu_{oj1.0} != \mu_{vc1.0}$
+
+$H_o: \mu_{oj2.0} = \mu_{vc2.0}$ and $H_a: \mu_{oj2.0} != \mu_{vc2.0}$
+
+The results are shown below using t-test
+
+```{r supp2}
+d0.5<-filter(df,dose == 0.5); d1.0 <- filter(df,dose == 1.0); d2.0 <- filter(df,dose == 2.0);
+t<-t.test(len~supp, paired = FALSE, var.equal = FALSE, data = d0.5)
+t0.5result <- data.frame("p-value"=t$p.value,"conf-low"=t$conf[1],"conf-high"=t$conf[2],"Ho Rejected?"=ifelse(t$p.value >= 0.05,"Yes","No"), row.names="0.5 mg", "diff-means"=t$estimate[1]-t$estimate[2])
+
+t<-t.test(len~supp, paired = FALSE, var.equal = FALSE, data = d1.0)
+t1.0result <- data.frame("p-value"=t$p.value,"conf-low"=t$conf[1],"conf-high"=t$conf[2],"Ho Rejected?"=ifelse(t$p.value >= 0.05,"Yes","No"),row.names="1.0 mg", "diff-means"=t$estimate[1]-t$estimate[2])
+
+t<-t.test(len~supp, paired = FALSE, var.equal = FALSE, data = d2.0)
+t2.0result <- data.frame("p-value"=t$p.value,"conf-low"=t$conf[1],"conf-high"=t$conf[2],"Ho Rejected?"=ifelse(t$p.value >= 0.05,"Yes","No"),row.names="2.0 mg", "diff-means"=t$estimate[1]-t$estimate[2])
+dose.result1 <- rbind(t0.5result, t1.0result, t2.0result)
+dose.result1
+````
+
+## Tests for Dose levels irrespective of Supplements
+
+Now we test for statistical significance for dose levels (3 combinations) i.e. comparing mean growth of tooth when given 0.5 mg of any supplement versus 1 mg, 1 mg versus 2 mg and 0.5 mg versus 2 mg.
+
+```{r supp3}
+d0.51.0<-filter(df,dose != 2.0); d1.02.0 <- filter(df,dose !=0.5 ); d0.52.0 <- filter(df,dose != 1.0);
+t<-t.test(len~dose, paired = FALSE, var.equal = FALSE, data = d0.51.0)
+t0.5result <- data.frame("p-value"=t$p.value,"conf-low"=t$conf[1],"conf-high"=t$conf[2],"Ho Rejected?"=ifelse(t$p.value >= 0.05,"Yes","No"), row.names="0.5 vs 1.0 mg", "diff-means"=t$estimate[1]-t$estimate[2])
+
+t<-t.test(len~dose, paired = FALSE, var.equal = FALSE, data = d1.02.0)
+t1.5result <- data.frame("p-value"=t$p.value,"conf-low"=t$conf[1],"conf-high"=t$conf[2],"Ho Rejected?"=ifelse(t$p.value >= 0.05,"Yes","No"),row.names="1.0 vs 2.0 mg", "diff-means"=t$estimate[1]-t$estimate[2])
+
+t<-t.test(len~dose, paired = FALSE, var.equal = FALSE, data = d0.52.0)
+t2.0result <- data.frame("p-value"=t$p.value,"conf-low"=t$conf[1],"conf-high"=t$conf[2],"Ho Rejected?"=ifelse(t$p.value >= 0.05,"Yes","No"),row.names="0.5 vs 2.0 mg", "diff-means"=t$estimate[1]-t$estimate[2])
+dose.result2 <- rbind(t0.5result, t1.5result, t2.0result)
+dose.result2
+````
+
+## Tests for Dose levels for OJ supplement
+
+Now we test for statistical significance for dose levels (3 combinations) i.e. comparing mean growth of tooth when given 0.5 mg of supplement versus 1 mg, 1 mg versus 2 mg and 0.5 mg versus 2 mg. Supplement is set to OJ only
+
+```{r supp4}
+d0.51.0<-filter(df,dose != 2.0 & supp == "OJ"); d1.02.0 <- filter(df,dose !=0.5 & supp=="OJ"); d0.52.0 <- filter(df,dose != 1.0 & supp=="OJ");
+t<-t.test(len~dose, paired = FALSE, var.equal = FALSE, data = d0.51.0)
+t0.5result <- data.frame("p-value"=t$p.value,"conf-low"=t$conf[1],"conf-high"=t$conf[2],"Ho Rejected?"=ifelse(t$p.value >= 0.05,"Yes","No"), row.names="0.5 vs 1.0 mg", "diff-means"=t$estimate[1]-t$estimate[2])
+
+t<-t.test(len~dose, paired = FALSE, var.equal = FALSE, data = d1.02.0)
+t1.5result <- data.frame("p-value"=t$p.value,"conf-low"=t$conf[1],"conf-high"=t$conf[2],"Ho Rejected?"=ifelse(t$p.value >= 0.05,"Yes","No"),row.names="1.0 vs 2.0 mg", "diff-means"=t$estimate[1]-t$estimate[2])
+
+t<-t.test(len~dose, paired = FALSE, var.equal = FALSE, data = d0.52.0)
+t2.0result <- data.frame("p-value"=t$p.value,"conf-low"=t$conf[1],"conf-high"=t$conf[2],"Ho Rejected?"=ifelse(t$p.value >= 0.05,"Yes","No"),row.names="0.5 vs 2.0 mg", "diff-means"=t$estimate[1]-t$estimate[2])
+dose.result3 <- rbind(t0.5result, t1.5result, t2.0result)
+dose.result3
+````
+## Tests for Dose levels for VC supplement
+
+Now we test for statistical significance for dose levels (3 combinations) i.e. comparing mean growth of tooth when given 0.5 mg of supplement versus 1 mg, 1 mg versus 2 mg and 0.5 mg versus 2 mg. Supplement is set to VC only
+
+```{r supp5}
+d0.51.0<-filter(df,dose != 2.0 & supp == "VC"); d1.02.0 <- filter(df,dose !=0.5 & supp=="VC"); d0.52.0 <- filter(df,dose != 1.0 & supp=="VC");
+t<-t.test(len~dose, paired = FALSE, var.equal = FALSE, data = d0.51.0)
+t0.5result <- data.frame("p-value"=t$p.value,"conf-low"=t$conf[1],"conf-high"=t$conf[2],"Ho Rejected?"=ifelse(t$p.value >= 0.05,"Yes","No"), row.names="0.5 vs 1.0 mg", "diff-means"=t$estimate[1]-t$estimate[2])
+
+t<-t.test(len~dose, paired = FALSE, var.equal = FALSE, data = d1.02.0)
+t1.5result <- data.frame("p-value"=t$p.value,"conf-low"=t$conf[1],"conf-high"=t$conf[2],"Ho Rejected?"=ifelse(t$p.value >= 0.05,"Yes","No"),row.names="1.0 vs 2.0 mg", "diff-means"=t$estimate[1]-t$estimate[2])
+
+t<-t.test(len~dose, paired = FALSE, var.equal = FALSE, data = d0.52.0)
+t2.0result <- data.frame("p-value"=t$p.value,"conf-low"=t$conf[1],"conf-high"=t$conf[2],"Ho Rejected?"=ifelse(t$p.value >= 0.05,"Yes","No"),row.names="0.5 vs 2.0 mg", "diff-means"=t$estimate[1]-t$estimate[2])
+dose.result4 <- rbind(t0.5result, t1.5result, t2.0result)
+dose.result4
+````
+
+# Conclusions
+
+* We failed to find complelling evidence for inferencing that average tooth growth will be higher when using one of the two supplement over the other (irrespective of dosage) at 5% significance level or within 95% confidence interval.
+* However, At 5% significane level, we found evidence that average tooth growth by 2 mg dosage of VC is higher than that of OJ supplement. This was proved using 95% confidence interval. The sample difference was 0.08 unit length.
+* At the same significance level, we failed to find any such statistically significant relationship for other dose level (1.0 or 0.5 mg) between VC and OJ supplements
+* The average tooth growth in the sample data shows higher growth with higher dosages - but we have not found statistically significant result at 5% significance level to conclusively accept this for wider population for following three conditions - increasing dose irrespective of supplement type, increasing dose for OJ supplement, increasing dose for VC supplement.

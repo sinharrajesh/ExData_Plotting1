@@ -1,0 +1,101 @@
+---
+title: "Is an Automatic or Manual Transmission Better for Fuel Consumption (a blast from the past - 1974 dataset analysis)?"
+author: "Rajesh Sinha"
+output: pdf_document
+---
+```{r  library, warning=FALSE, message=FALSE, echo=F}
+library(data.table)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(knitr)
+library(datasets)
+```
+`r opts_chunk$set(echo=T, tidy=T)`
+# Executive Summary
+
+This analysis is based on 1974 Motor Tend US dataset which comprises of fuel consumption of 31 automobiles of (1973-74 models). Based on regression models, we can confirm the following
+
+* Fuel consumption is best explained by a regression model which has weight, cyclinder, horsepower as confounding variables and transmission type as independent predictor
+* Automatic Transmission is less fuel efficient than Manual transmission
+* Based on our model, we can estimate that the manual transmission cars are 1.80 miles per gallon more fuel efficient than automatic cars.
+
+# Exploratory Analysis
+
+```{r basic}
+data(mtcars); df <- mtcars; df$am <- as.factor(df$am); df$cyl <- factor(df$cyl); df$vs <- factor(df$vs); df$gear <- factor(df$gear); df$carb <- factor(df$carb); levels(df$am) <- c("Automatic","Manual")
+x<- df %>% select(mpg, am) %>% group_by(am) %>% summarize(mn = mean(mpg))
+```
+
+Within exploratory analysis, we see that
+
+* The boxplot in appendix (Figure-1) clearly shows that there is a difference betwen automatic and manual fuel consumption. The average fuel consumption of automatic car is `r x[1,]$mn` and for manual is `r x[2,]$mn` miles per gallon. 
+* This difference is statistically significant. If we perform t test for manual and automatic transmission data using t-test, we can see that we can reject the null hypothesis that the there is no difference between the averages of the mpg between the transmission types.
+````{r} 
+t.test(mpg ~ am, data = df)
+````
+
+
+# Building Regression Models
+
+First we see how well does a simple regression model of mpg as a predicted value with only transmission type as predictor is
+
+## Initial Model based on Transmission Type only
+
+```{r basefit}
+fit.am <- lm(mpg ~ am, data=df)
+summary(fit.am)
+```
+
+Note the following
+
+* the p-value is smaller than 0.05 implying that there exists a statistically significant difference between means of manual versus automatic transmission cars
+* from intercepts, we can see that automatic transmission achieve 17.147 mpg whereas the manual ones do 24.39 mpg
+* The adjusted R^2^ value is 0.34 implying that only 36% is explained by transmission type as predictor
+
+Based on the above, we __cannot__ confirm that the difference between the manual and automatic transmission is actually __7.254__ as the model is not good enough. 
+
+## Finding the Best Fit Model
+
+Given the poor explanation of variability of mpg only by transmission type, we now find what other predictors are important. 
+```{r bestfitmodel,results='hide'}
+base.model <- lm(mpg~., data=df); 
+best.model <- step(base.model, direction="both");
+````
+
+```{r bestmodel}
+summary(best.model)
+````
+
+Note the following
+
+* The adjusted R^2^ is about 84% which explains sizeable variability of mpg
+* Beyond transmission type as an independent variable, it also includes weight, cyclinder and horsepower as confounding variables.
+* The difference between the automatic and manual transmission now stands at __1.80 mpg__.
+
+To confirm the importance of additional predictors, we can run anova of best.model with fit.am
+
+```{r}
+anova(best.model, fit.am)
+````
+The low p value is indicative of statistically significant difference between the two models. 
+
+Figure 2 in the appendix shows the checking of residuals for signs of non-normality & residuals vs fitted values plot for signs of heteroskedasticity. residual diagnostics show normality & no evidence of heteroskedasticity. Over here we can find that the points in the Residuals vs. Fitted plot are randomly scattered on the plot that verifies the independence condition.The Normal Q-Q plot consists of the points which mostly fall on the line indicating that the residuals are normally distributed. The Scale-Location plot consists of points scattered in a constant band pattern, indicating constant variance. There are some distinct points of interest (outliers or leverage points) in the top right of the plots that may indicate values of increased leverage of outliers.
+
+
+
+# Appendix
+
+## Figure 1. Boxplot of automated vs manual cars
+```{r plot1}
+means <- aggregate(mpg ~  am, df, mean)
+ggplot(df, aes(x=am, y=mpg)) + geom_boxplot(aes(fill=am)) + facet_wrap(~am) + ylab("MPG") + xlab("Trasmission") + ggtitle("Figure-1: MPG by transmission type") + stat_summary(fun.y=mean, colour="darkred", geom="point", shape=18, size=3,show_guide = FALSE) + geom_text(data = means, aes(label = round(mpg, 2), y = mpg + 0.08), size = 3)
+````
+
+
+## Figure 2. Residuals Plotting
+
+```{r plot2}
+par(mfrow = c(2,2))
+plot(best.model)
+````
